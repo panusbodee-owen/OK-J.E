@@ -4,10 +4,10 @@ Menus: `Accounting > Customers > Invoices | Credit Notes | Payments` · `Account
 Flow: Draft → **Confirm** (Posted) → **Register Payment** → Paid / In Payment → reconcile with bank statement. Reverse: **Credit Note** / **Reverse Entry**. **Reset to Draft** if allowed.
 
 Thai localization `l10n_th` [CONFIG]: Thai CoA, VAT 7% sales/purchase taxes, tax report. Items often from OCA/custom — confirm with user before writing TC:
-- ภาษีหัก ณ ที่จ่าย (WHT 1/2/3/5%), หนังสือรับรอง 50 ทวิ, ภ.ง.ด.3 / 53
-- ใบกำกับภาษี / ใบเสร็จรับเงิน / ใบวางบิล format, เลขที่สาขา (Head Office / Branch 00001)
-- ภาษีขาย/ซื้อตั้งพัก (VAT on services, recognized on payment) → Odoo **Cash Basis** taxes (Settings > Taxes > Cash Basis)
-- รายงานภาษีซื้อ/ภาษีขาย (ภ.พ.30)
+- Withholding tax (WHT 1/2/3/5%), WHT certificate (50 Tawi), WHT returns PND 3 / PND 53
+- Tax invoice / receipt / billing note layouts, branch number (Head Office / Branch 00001)
+- Undue output/input VAT (VAT on services, recognized on payment) → Odoo **Cash Basis** taxes (Settings > Taxes > Cash Basis)
+- Input/output VAT reports and VAT return (PP 30)
 
 ## Standard checklist
 - Invoice post: JE Dr AR / Cr Revenue / Cr Output VAT; sequence numbering per journal/year

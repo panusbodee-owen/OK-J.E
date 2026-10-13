@@ -1,41 +1,41 @@
-# Template: User Manual / SOP (คู่มือการใช้งาน)
+# Template: User Manual / SOP
 
-Audience: end users (Thai). Short sentences, imperative ("กดปุ่ม **Confirm**"). One process per chapter. No theory — only what the user clicks and checks.
+Audience: end users. Short sentences, imperative ("Click **Confirm**"). One process per chapter. No theory — only what the user clicks and checks. Labels below are in English; render them in the document language (default Thai).
 
 ## Output format
 
 ```
-# คู่มือการใช้งาน Odoo <ver> — <Module>
-| โครงการ | <name> | เวอร์ชันเอกสาร | 1.0 | วันที่ | <yyyy-mm-dd> | ผู้จัดทำ | |
+# User Manual — Odoo <ver> — <Module>
+| Project | <name> | Document version | 1.0 | Date | <yyyy-mm-dd> | Prepared by | |
 |---|---|---|---|---|---|---|---|
 
-## สารบัญ
+## Table of Contents
 1. <Process 1>
 2. <Process 2>
 
 ## 1. <Process name>
-**วัตถุประสงค์:** <1 line>
-**ผู้ใช้งาน / สิทธิ์:** <role> (<Odoo group>)
-**เมนู:** `Sales > Orders > Quotations`
-**ก่อนเริ่ม:** <master data / settings ที่ต้องมี>
+**Purpose:** <1 line>
+**Users / Access rights:** <role> (<Odoo group>)
+**Menu:** `Sales > Orders > Quotations`
+**Before you start:** <required master data / settings>
 
-### ขั้นตอน
-| # | การทำงาน | หมายเหตุ |
+### Steps
+| # | Action | Note |
 |---|---|---|
-| 1 | ไปที่เมนู `Sales > Orders > Quotations` กด **New** | ![ภาพ 1.1](images/1-1.png) |
-| 2 | ระบุ **Customer** | ฟิลด์บังคับ |
-| 3 | แท็บ **Order Lines** กด **Add a product** เลือกสินค้า ระบุ **Quantity** | ราคาดึงจาก Pricelist อัตโนมัติ |
-| 4 | กด **Confirm** | สถานะเปลี่ยนเป็น Sales Order |
+| 1 | Go to `Sales > Orders > Quotations`, click **New** | ![Figure 1.1](images/1-1.png) |
+| 2 | Enter **Customer** | Required field |
+| 3 | In tab **Order Lines** click **Add a product**, select product, enter **Quantity** | Price comes from the Pricelist automatically |
+| 4 | Click **Confirm** | State changes to Sales Order |
 
-### ผลลัพธ์ที่ต้องตรวจสอบ
-- <สถานะ/เอกสารที่ถูกสร้าง/ตัวเลขที่ต้องเห็น>
+### Result check
+- <state / document created / figures to verify>
 
-### ข้อควรระวัง / FAQ
-- **ถาม:** ... **ตอบ:** ...
+### Cautions / FAQ
+- **Q:** ... **A:** ...
 ```
 
 ## Rules
-- Screenshot placeholders: `![ภาพ <chapter>.<n>](images/<chapter>-<n>.png)` — only where the screen changes, max 1 per 2 steps.
-- Field/button names exactly as the target version UI (English) — Thai explanation in the Remark column if needed.
+- Screenshot placeholders: `![Figure <chapter>.<n>](images/<chapter>-<n>.png)` — only where the screen changes, max 1 per 2 steps.
+- Field/button names exactly as the target version UI (English) — explanation in the document language in the Note column if needed.
 - Customer-specific fields (Studio/custom module): mark `(Custom)`.
 - End chapter with result-check list; end document with a glossary only if user asks.

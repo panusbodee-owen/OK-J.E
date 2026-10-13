@@ -20,7 +20,7 @@ Per process cover, in this order: Happy path → Negative (validation/permission
 ## Test Cases
 | TC ID | Scenario | Type | Pre | Steps | Test Data | Expected Result | Priority | Status | Remark |
 |---|---|---|---|---|---|---|---|---|---|
-| TC-SO-001 | สร้างใบเสนอราคาและยืนยัน | Positive | PRE-1,2 | 1. Sales > Orders > Quotations > **New**<br>2. เลือก Customer, เพิ่ม Product<br>3. **Confirm** | C001, P001 x 2 | สถานะ = Sales Order, Delivery 1 ใบถูกสร้าง, Untaxed 2,000 / Tax 140 / Total 2,140 | High | Not Run | |
+| TC-SO-001 | Create and confirm quotation | Positive | PRE-1,2 | 1. Sales > Orders > Quotations > **New**<br>2. Select Customer, add Product<br>3. **Confirm** | C001, P001 x 2 | State = Sales Order, 1 Delivery created, Untaxed 2,000 / Tax 140 / Total 2,140 | High | Not Run | |
 ```
 
 Column rules:

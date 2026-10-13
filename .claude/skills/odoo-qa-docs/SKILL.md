@@ -1,6 +1,6 @@
 ---
 name: odoo-qa-docs
-description: Odoo QA & documentation for Thai implementation projects, any version (16, 17, 18, 19, 20+) — writes Test Cases, UAT scripts, User Manuals (คู่มือการใช้งาน), Bug Reports and upgrade regression tests, exports to Excel/Word. Use when the user asks for test case, เทสเคส, UAT, SIT, regression, upgrade test, คู่มือ, manual, SOP, bug report, รายงานบั๊ก, or QA for an Odoo module/process (Sales, Purchase, Inventory, Accounting, MRP, POS, CRM).
+description: Odoo QA & documentation for Thai implementation projects, any version (16, 17, 18, 19, 20+) — writes Test Cases, UAT scripts, User Manuals, Bug Reports and upgrade regression tests, exports to Excel/Word. Use when the user asks for test case, UAT, SIT, regression, upgrade test, user manual, SOP, work instruction, bug report, defect, or QA for an Odoo module/process (Sales, Purchase, Inventory, Accounting, MRP, POS, CRM).
 ---
 
 # Odoo QA & Docs (Thailand, version-aware)
@@ -16,7 +16,7 @@ description: Odoo QA & documentation for Thai implementation projects, any versi
 ## Defaults (unless user says otherwise)
 - Version: as stated by user / project spec; if not stated → Odoo 18. Community/Enterprise per user.
 - Company in Thailand, currency THB, VAT 7%.
-- Document language: Thai, Odoo menu/button/field names in English exactly as in the target version UI (e.g. `Sales > Orders > Quotations`, button **Confirm**).
+- Document language: Thai (switch to English or other if the user asks). Template labels are written in English — render them in the document language. Odoo menu/button/field names in English exactly as in the target version UI (e.g. `Sales > Orders > Quotations`, button **Confirm**).
 - Output folder: `docs/<type>/` in the working project. File name: `<TYPE>_<MODULE>_v<ver>_<yyyymmdd>.md`.
 
 ## Step 1 — Version → load `versions/v<ver>.md`
@@ -26,10 +26,10 @@ description: Odoo QA & documentation for Thai implementation projects, any versi
 ## Step 2 — Mode → load that template
 | User asks for | Template | Typical export |
 |---|---|---|
-| Test case / SIT / เทสเคส | `templates/test-case.md` | xlsx |
+| Test case / SIT | `templates/test-case.md` | xlsx |
 | UAT script / sign-off | `templates/uat-script.md` | xlsx + docx |
 | Upgrade / regression test (vOLD→vNEW) | `templates/upgrade-regression.md` | xlsx |
-| คู่มือ / user manual / SOP | `templates/user-manual.md` | docx |
+| User manual / SOP | `templates/user-manual.md` | docx |
 | Bug / defect report | `templates/bug-report.md` | md (paste to tracker) |
 
 ## Step 3 — Module knowledge → load only what is in scope
