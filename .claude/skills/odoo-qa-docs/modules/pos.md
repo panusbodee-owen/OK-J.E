@@ -1,4 +1,4 @@
-# Point of Sale (Odoo 18)
+# Point of Sale (baseline: Odoo 18 — apply `versions/vNN.md` deltas for other versions)
 
 Menus: `Point of Sale > Dashboard` (Open Register / Continue Selling) · `Point of Sale > Orders > Orders | Sessions | Payments` · `Point of Sale > Products > Products` · `Point of Sale > Configuration > Settings | Point of Sales | Payment Methods`
 Flow: Open session (opening cash) → add products → **Payment** → choose method → **Validate** → receipt → **Close Register** (cash count) → session posted JE.

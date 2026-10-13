@@ -10,7 +10,7 @@ Per process cover, in this order: Happy path → Negative (validation/permission
 
 ```
 # Test Case — <Module> — <Process>
-| Project | <name> | Version | Odoo 18 <CE/EE> | Prepared by | | Date | <yyyy-mm-dd> |
+| Project | <name> | Version | Odoo <ver> <CE/EE> | Prepared by | | Date | <yyyy-mm-dd> |
 |---|---|---|---|---|---|---|---|
 
 ## Shared Preconditions

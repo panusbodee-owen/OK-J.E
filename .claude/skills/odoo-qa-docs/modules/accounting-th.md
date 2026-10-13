@@ -1,4 +1,4 @@
-# Accounting / Invoicing — Thailand (Odoo 18)
+# Accounting / Invoicing — Thailand (baseline: Odoo 18 — apply `versions/vNN.md` deltas for other versions)
 
 Menus: `Accounting > Customers > Invoices | Credit Notes | Payments` · `Accounting > Vendors > Bills | Refunds | Payments` · `Accounting > Accounting > Journal Entries | Journal Items` · Bank reconcile from `Accounting > Dashboard` (bank journal) · `Accounting > Reporting > Balance Sheet | Profit and Loss | General Ledger | Aged Receivable | Aged Payable | Tax Return` (EE reports) · `Accounting > Configuration > Settings | Taxes | Journals | Chart of Accounts`
 Flow: Draft → **Confirm** (Posted) → **Register Payment** → Paid / In Payment → reconcile with bank statement. Reverse: **Credit Note** / **Reverse Entry**. **Reset to Draft** if allowed.

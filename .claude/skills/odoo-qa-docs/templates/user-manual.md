@@ -5,7 +5,7 @@ Audience: end users (Thai). Short sentences, imperative ("กดปุ่ม **C
 ## Output format
 
 ```
-# คู่มือการใช้งาน Odoo 18 — <Module>
+# คู่มือการใช้งาน Odoo <ver> — <Module>
 | โครงการ | <name> | เวอร์ชันเอกสาร | 1.0 | วันที่ | <yyyy-mm-dd> | ผู้จัดทำ | |
 |---|---|---|---|---|---|---|---|
 
@@ -36,6 +36,6 @@ Audience: end users (Thai). Short sentences, imperative ("กดปุ่ม **C
 
 ## Rules
 - Screenshot placeholders: `![ภาพ <chapter>.<n>](images/<chapter>-<n>.png)` — only where the screen changes, max 1 per 2 steps.
-- Field/button names exactly as Odoo 18 UI (English) — Thai explanation in the Remark column if needed.
+- Field/button names exactly as the target version UI (English) — Thai explanation in the Remark column if needed.
 - Customer-specific fields (Studio/custom module): mark `(Custom)`.
 - End chapter with result-check list; end document with a glossary only if user asks.

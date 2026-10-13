@@ -1,7 +1,7 @@
-# Inventory (Odoo 18)
+# Inventory (baseline: Odoo 18 — apply `versions/vNN.md` deltas for other versions)
 
 Menus: `Inventory > Operations > Transfers > Receipts | Deliveries` (Internal when multi-location) · `Inventory > Operations > Physical Inventory | Replenishment | Scrap` (verify for your edition) · `Inventory > Products > Products | Lots/Serial Numbers` · `Inventory > Reporting > Stock | Moves History | Moves Analysis | Valuation` · `Inventory > Configuration > Settings | Warehouses | Locations | Routes`
-Odoo 18 product: Product Type = Goods | Service | Combo; **Track Inventory** checkbox; tracking By Quantity | By Lots | By Unique Serial Number.
+v18 product: Product Type = Goods | Service | Combo; **Track Inventory** checkbox; tracking By Quantity | By Lots | By Unique Serial Number.
 Transfer states: Draft → Waiting → Ready → Done / Cancelled. Buttons: **Check Availability**, **Validate**, **Return**, backorder wizard (Create Backorder / No Backorder).
 
 Settings [CONFIG]: Storage Locations, Multi-Step Routes (1/2/3 step receipt & delivery), Lots & Serial Numbers, Expiration Dates, Packages, UoM, Landed Costs, Reservation method on operation type.

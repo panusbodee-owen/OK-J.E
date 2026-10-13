@@ -1,4 +1,4 @@
-# CRM (Odoo 18)
+# CRM (baseline: Odoo 18 — apply `versions/vNN.md` deltas for other versions)
 
 Menus: `CRM > Sales > My Pipeline | My Activities | My Quotations` · `CRM > Leads > Leads` (when Leads enabled) · `CRM > Reporting > Pipeline | Activities` · `CRM > Configuration > Settings | Sales Teams | Stages | Lost Reasons`
 Flow: Lead → **Convert to Opportunity** → stages (drag in kanban) → **New Quotation** → **Won** / **Lost** (reason).

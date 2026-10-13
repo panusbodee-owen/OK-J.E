@@ -6,7 +6,7 @@ UAT = business end-to-end scenarios run by key users with real-like data. Fewer,
 
 ```
 # UAT Script — <Module/Process> — <Project>
-| Version | Odoo 18 | UAT Round | 1 | Environment | UAT DB `<name>` | Period | <dates> |
+| Version | Odoo <ver> | UAT Round | 1 | Environment | UAT DB `<name>` | Period | <dates> |
 |---|---|---|---|---|---|---|---|
 
 ## Scenario List

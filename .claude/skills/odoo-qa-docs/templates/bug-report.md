@@ -7,7 +7,7 @@ Input is often a tester's messy note or screenshot. Convert to this exact format
 | Field | Value |
 |---|---|
 | Module / Menu | Sales > Orders > Quotations |
-| Environment | <UAT/SIT DB>, Odoo 18 <CE/EE>, browser |
+| Environment | <UAT/SIT DB>, Odoo <ver> <CE/EE>, browser |
 | Severity | Critical / Major / Minor / Trivial |
 | Priority | P1 / P2 / P3 |
 | Related TC | TC-SO-003 |

@@ -1,4 +1,4 @@
-# Manufacturing (Odoo 18)
+# Manufacturing (baseline: Odoo 18 — apply `versions/vNN.md` deltas for other versions)
 
 Menus: `Manufacturing > Operations > Manufacturing Orders | Unbuild Orders | Scrap` · `Manufacturing > Products > Bills of Materials` · `Manufacturing > Configuration > Settings | Work Centers | Operations`
 Flow: BoM → MO **Confirm** → **Check Availability** → (Work Orders start/finish) → **Produce All** → Done. Components consumed, finished goods in stock.

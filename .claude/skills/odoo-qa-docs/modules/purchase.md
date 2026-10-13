@@ -1,4 +1,4 @@
-# Purchase (Odoo 18)
+# Purchase (baseline: Odoo 18 — apply `versions/vNN.md` deltas for other versions)
 
 Menus: `Purchase > Orders > Requests for Quotation | Purchase Orders` · `Purchase > Orders > Vendors` · `Purchase > Products > Products` · `Purchase > Configuration > Settings` · Agreements `Purchase > Orders > Purchase Agreements` [CONFIG]
 Flow: RFQ → **Send by Email** → **Confirm Order** (PO) → **Receive Products** → Validate receipt → **Create Bill** → Bill **Confirm** → **Register Payment**

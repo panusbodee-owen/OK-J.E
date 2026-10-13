@@ -1,4 +1,4 @@
-# Sales (Odoo 18)
+# Sales (baseline: Odoo 18 — apply `versions/vNN.md` deltas for other versions)
 
 Menus: `Sales > Orders > Quotations | Orders` · `Sales > To Invoice > Orders to Invoice` · `Sales > Products > Products | Pricelists` · `Sales > Configuration > Settings`
 Flow: Quotation → **Send by Email** → **Confirm** (Sales Order) → Delivery (Inventory) → **Create Invoice** → Invoice **Confirm** → **Register Payment**
