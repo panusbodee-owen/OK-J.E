@@ -6,31 +6,34 @@ EA เทรดทองคำ XAUUSD แบบ **Trend Pullback + Market Struct
 
 ---
 
-## 1. ไฟล์ในชุด
+## 1. ไฟล์
 
-| ไฟล์ | หน้าที่ |
+ทั้ง EA อยู่ใน **ไฟล์เดียว: `XauTrendPullback.mq5`** (ใช้แค่ไลบรารีมาตรฐาน `Trade\Trade.mqh` ที่มากับ MT5 อยู่แล้ว)
+
+ภายในไฟล์แบ่งเป็นหัวข้อ `SECTION:` ตามลำดับ:
+
+| Section | หน้าที่ |
 |---|---|
-| `Experts/XauTrendPullback/XauTrendPullback.mq5` | ไฟล์หลัก: Inputs, OnInit/OnTick, Dashboard, OnTester (**compile ไฟล์นี้**) |
-| `Experts/XauTrendPullback/Common.mqh` | Struct และฟังก์ชันช่วย (ราคา, lot, เวลา, Global Variables) |
-| `Experts/XauTrendPullback/Structure.mqh` | อ่านโครงสร้างตลาด: Swing (Fractal + ATR), BOS/CHoCH ยืนยันด้วยราคาปิด, Sweep, Impulse leg |
-| `Experts/XauTrendPullback/Regime.mqh` | ระบุ Regime: TREND_UP / TREND_DOWN / RANGE / HIGH_VOL / DEAD |
-| `Experts/XauTrendPullback/Filters.mqh` | Session (เวลาเซิร์ฟเวอร์) + News filter (CSV และ MT5 Calendar) |
-| `Experts/XauTrendPullback/Risk.mqh` | คำนวณ lot จากความเสี่ยง, Daily/Weekly/Max-DD lock, ลดความเสี่ยงเมื่อแพ้ติดกัน |
-| `Experts/XauTrendPullback/Signal.mqh` | เงื่อนไขเข้า: H1 Fib zone + M15 CHoCH |
-| `Experts/XauTrendPullback/Execution.mqh` | บริหารออเดอร์: TP1 + BE, Trailing, ออกเมื่อ CHoCH, Time stop, News exit, ปิดก่อน Rollover |
-| `Scripts/XauExportNewsCalendar.mq5` | Export ข่าวแดงจาก MT5 Calendar เป็น CSV สำหรับใช้ตอน backtest |
+| Inputs | ค่าตั้งทั้งหมด (แบ่งกลุ่ม Risk / Structure / Regime / Entry / Exits / Sessions / News / Execution) |
+| COMMON | Struct และฟังก์ชันช่วย (ราคา, lot, เวลา, Global Variables) |
+| STRUCTURE | อ่านโครงสร้างตลาด: Swing (Fractal + ATR), BOS/CHoCH ยืนยันด้วยราคาปิด, Sweep, Impulse leg |
+| REGIME | ระบุ Regime: TREND_UP / TREND_DOWN / RANGE / HIGH_VOL / DEAD |
+| FILTERS | Session (เวลาเซิร์ฟเวอร์) + News filter (CSV และ MT5 Calendar) + Export ข่าวเป็น CSV |
+| RISK | คำนวณ lot จากความเสี่ยง, Daily/Weekly/Max-DD lock, ลดความเสี่ยงเมื่อแพ้ติดกัน |
+| EXECUTION | บริหารออเดอร์: TP1 + BE, Trailing, ออกเมื่อ CHoCH, Time stop, News exit, ปิดก่อน Rollover |
+| SIGNAL | เงื่อนไขเข้า: H1 Fib zone + M15 CHoCH |
+| OnInit / OnTick / OnTester | ส่วนควบคุมหลัก, Dashboard บนกราฟ, เกณฑ์ Custom สำหรับ optimize |
 
 ---
 
 ## 2. การติดตั้ง
 
-1. เปิด MT5 → **File → Open Data Folder**
-2. คัดลอกโฟลเดอร์ `Experts/XauTrendPullback` ไปไว้ที่ `MQL5/Experts/`
-3. คัดลอก `Scripts/XauExportNewsCalendar.mq5` ไปไว้ที่ `MQL5/Scripts/`
-4. เปิด MetaEditor (F4) → เปิด `XauTrendPullback.mq5` → กด **Compile (F7)**
+1. เปิด MT5 → **File → Open Data Folder** → เข้าโฟลเดอร์ `MQL5/Experts/`
+2. วางไฟล์ `XauTrendPullback.mq5` ลงไป
+   - หรือใน MetaEditor: **File → New → Expert Advisor** ตั้งชื่อ `XauTrendPullback` แล้ววางโค้ดทั้งหมดทับ
+3. เปิดไฟล์ใน MetaEditor (F4) → กด **Compile (F7)**
    - ถ้ามี error ให้ copy ข้อความจากแท็บ Errors มาให้แก้ได้เลย
-5. Compile `XauExportNewsCalendar.mq5` ด้วยวิธีเดียวกัน
-6. เปิดกราฟ XAUUSD (แนะนำ M15) แล้วลาก EA ใส่กราฟ เปิด **Algo Trading**
+4. เปิดกราฟ XAUUSD (แนะนำ M15) แล้วลาก EA ใส่กราฟ เปิด **Algo Trading**
 
 > EA อ่าน H4, H1, M15 เองเสมอ ไม่ว่ากราฟที่เปิดจะเป็น timeframe อะไร
 
@@ -55,11 +58,12 @@ EA เทรดทองคำ XAUUSD แบบ **Trend Pullback + Market Struct
 
 ## 4. ตั้งค่า News filter สำหรับ Backtest
 
-ฟังก์ชัน Calendar ของ MT5 **ใช้ใน Strategy Tester ไม่ได้** จึงต้อง export ข่าวเป็นไฟล์ CSV ก่อน
+ฟังก์ชัน Calendar ของ MT5 **ใช้ใน Strategy Tester ไม่ได้** จึงต้อง export ข่าวเป็นไฟล์ CSV ก่อน ฟังก์ชันนี้อยู่ใน EA แล้ว:
 
-1. เปิดกราฟใดก็ได้บนบัญชี demo/จริงที่เชื่อมต่ออยู่
-2. ลากสคริปต์ `XauExportNewsCalendar` ใส่กราฟ ตั้งช่วงวันที่ให้ครอบคลุมช่วง backtest แล้วกด OK
-3. ไฟล์จะถูกบันทึกที่ `Terminal\Common\Files\xau_news_usd.csv` ซึ่ง EA จะอ่านทั้งตอน backtest และตอนเทรดจริง (เป็นตัวสำรอง)
+1. ลาก EA ใส่กราฟบนบัญชี demo/จริงที่เชื่อมต่ออยู่ ตั้ง `InpExportNewsCsv = true` และ `InpExportFrom` ให้ครอบคลุมช่วง backtest
+2. ดูแท็บ Experts จะมีข้อความ `Exported N high-impact events ...`
+3. ไฟล์จะถูกบันทึกที่ `Terminal\Common\Files\xau_news_usd.csv` จากนั้นจะถอด EA ออก หรือตั้ง `InpExportNewsCsv` กลับเป็น `false` ก็ได้
+4. EA จะอ่านไฟล์นี้ทั้งตอน backtest และตอนเทรดจริง (ใช้เป็นตัวสำรอง)
 
 รูปแบบไฟล์ (เวลาเซิร์ฟเวอร์) ถ้าจะทำเองจาก ForexFactory ให้ใช้รูปแบบเดียวกันนี้:
 ```
