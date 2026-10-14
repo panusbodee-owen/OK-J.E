@@ -1,12 +1,13 @@
 //+------------------------------------------------------------------+
 //|                                           XAU_SweepCHoCH_EA.mq5  |
-//|   XAUUSD "ท่าเดิม ต้นทุนต่ำ" : Liquidity Sweep + CHoCH + FVG       |
+//|   XAUUSD "ท่าเดิม ต้นทุนต่ำ" : 3 Setups (Sweep / Pullback / B&R)  |
 //|   State Machine 6 สถานะ ตามพิมพ์เขียว EA (ส่วนที่ 3)               |
 //+------------------------------------------------------------------+
 #property copyright "OK-J.E"
-#property version   "1.00"
-#property description "XAUUSD Liquidity Sweep + CHoCH (FVG) EA with killzone, spread, news filters,"
-#property description "ATR-based SL, risk-% lot sizing, partial close 50% @1.5R, BE, M15 swing trailing,"
+#property version   "2.00"
+#property description "XAUUSD EA: S1 Liquidity Sweep + CHoCH (FVG), S2 Trend Pullback + OB, S3 Breakout & Retest."
+#property description "Killzone/spread/news filters, ATR SL, risk % or fixed money per trade, partial 50% @1.5R, BE,"
+#property description "M15 swing trailing,"
 #property description "daily circuit breaker. All session times are Thai time (GMT+7)."
 
 #include <Trade/Trade.mqh>
@@ -22,9 +23,23 @@ enum ENUM_EA_STATE
    ST_TRADE = 6       // STATE 6: TRADE MANAGEMENT
   };
 
+enum ENUM_RISK_MODE
+  {
+   RISK_PERCENT = 0,  // % ของ Balance
+   RISK_MONEY   = 1   // ยอดเงินคงที่ต่อไม้ (เช่น 5$)
+  };
+
 //--- inputs
+input group "=== เลือกท่าเทรด (Setups) ==="
+input bool   InpUseSetup1        = true;   // ท่า 1: Liquidity Sweep + CHoCH
+input bool   InpUseSetup2        = true;   // ท่า 2: Trend Pullback + OB (Fibo 61.8-78.6)
+input bool   InpUseSetup3        = true;   // ท่า 3: Breakout & Retest
+
 input group "=== ความเสี่ยง (Risk) ==="
-input double InpRiskPercent      = 1.0;    // Risk % ต่อไม้ (0.5 - 1.0)
+input ENUM_RISK_MODE InpRiskMode = RISK_PERCENT; // วิธีคิดความเสี่ยงต่อไม้
+input double InpRiskPercent      = 1.0;    // Risk % ต่อไม้ (ใช้เมื่อเลือก %)
+input double InpRiskMoney        = 5.0;    // Risk เป็นเงินต่อไม้ (ใช้เมื่อเลือกยอดเงิน, สกุลบัญชี)
+input bool   InpAllowMinLot      = false;  // ถ้า Lot คำนวณได้ต่ำกว่าขั้นต่ำ ให้ใช้ Lot ขั้นต่ำ (เสี่ยงเกินที่ตั้ง)
 input double InpTP_R             = 3.0;    // TP หลัก (R)
 input double InpPartialR         = 1.5;    // แบ่งปิดกำไรที่ (R)
 input double InpPartialRatio     = 0.5;    // สัดส่วนแบ่งปิด (0.5 = 50%)
@@ -36,7 +51,8 @@ input double InpSLBufferATR      = 0.2;    // ระยะเผื่อ SL = x
 
 input group "=== Circuit Breaker รายวัน ==="
 input int    InpMaxConsecLosses  = 2;      // แพ้ติดต่อกันกี่ไม้ให้หยุดวันนั้น
-input double InpMaxDailyLossPct  = 2.0;    // ขาดทุนรวมสูงสุดต่อวัน (%)
+input double InpMaxDailyLossPct  = 2.0;    // ขาดทุนรวมสูงสุดต่อวัน (%) (0 = ปิด)
+input double InpMaxDailyLossMoney= 0.0;    // ขาดทุนรวมสูงสุดต่อวัน (เงิน) (0 = ปิด)
 
 input group "=== โครงสร้างตลาด (Structure) ==="
 input int    InpATRPeriod        = 14;     // ATR period
@@ -51,6 +67,21 @@ input bool   InpUseAsianLevels   = true;   // ใช้ Asian High/Low เป็
 input bool   InpUsePrevDayLevels = true;   // ใช้ High/Low วันก่อนหน้า
 input bool   InpUseH1SwingLevels = true;   // ใช้ Swing High/Low H1
 input bool   InpUseEquilibrium   = false;  // Buy เฉพาะ Discount / Sell เฉพาะ Premium (กรอบ H1)
+
+input group "=== ท่า 2: Trend Pullback + OB ==="
+input double InpPB_FiboMin       = 0.618;  // โซนย่อตัว Fibo เริ่ม
+input double InpPB_FiboMax       = 0.786;  // โซนย่อตัว Fibo สิ้นสุด
+input bool   InpPB_RequireOB     = true;   // ต้องมี Order Block H1 ซ้อนทับโซน Fibo
+input bool   InpPB_RequireH4     = false;  // เทรนด์ H4 ต้องไปทางเดียวกับ H1
+input double InpPB_PinWickRatio  = 2.0;    // Pin Bar: ไส้ >= x เท่าของเนื้อเทียน
+
+input group "=== ท่า 3: Breakout & Retest ==="
+input int    InpBO_ConsolBars    = 16;     // ก่อนเบรก ต้องปิดอยู่ในกรอบอย่างน้อย (แท่ง M15)
+input double InpBO_MomentumATR   = 1.0;    // แท่งเบรก: เนื้อเทียน >= x * ATR(M15)
+input double InpBO_RetestTolATR  = 0.2;    // ระยะยอมรับการแตะ Retest = x * ATR(M15)
+input double InpBO_FailATR       = 0.3;    // เบรกหลอก: ปิดกลับเข้ากรอบเกิน x * ATR(M15)
+input int    InpBO_RetestMaxBars = 16;     // รอ Retest ไม่เกิน (แท่ง M15)
+input bool   InpBO_NYOnly        = true;   // เข้าท่า 3 เฉพาะ NY Killzone
 
 input group "=== เวลา (เวลาไทย GMT+7) ==="
 input int    InpServerGMTOffset  = 3;      // GMT offset ของเซิร์ฟเวอร์ (ใช้ใน Tester / ถ้าปิด Auto)
@@ -79,7 +110,7 @@ input bool   InpDrawLevels       = true;   // วาดเส้น Asian / PDH 
 //--- globals
 CTrade         trade;
 ENUM_EA_STATE  g_state = ST_IDLE;
-int            hATR_M5 = INVALID_HANDLE, hATR_M15 = INVALID_HANDLE, hATR_H1 = INVALID_HANDLE;
+int            hATR_M5 = INVALID_HANDLE, hATR_M15 = INVALID_HANDLE, hATR_H1 = INVALID_HANDLE, hATR_H4 = INVALID_HANDLE;
 
 // session minutes (Thai time)
 int            mAsianS, mAsianE, mLonS, mLonE, mNYS, mNYE;
@@ -111,8 +142,24 @@ datetime       g_orderBarTime = 0;
 double         g_entry = 0, g_sl = 0, g_tp = 0, g_riskDist = 0, g_lot = 0;
 bool           g_partialDone = false;
 
+string         g_setupTag = "";          // ท่าที่กำลังเทรด (S1/S2/S3)
+
+// setup 2: trend pullback
+int            g_trendH1 = 0;
+datetime       g_pbUsedLeg = 0;          // เวลา swing ปลายขาที่เข้าไปแล้ว (1 ไม้ต่อขา)
+string         g_pbInfo = "";
+
+// setup 3: breakout & retest
+bool           g_boActive = false;
+int            g_boDir = 0;
+double         g_boLevel = 0;
+string         g_boName = "";
+datetime       g_boBarTime = 0;          // เวลาแท่ง M15 ที่เบรก
+double         g_boUsedLevels[];
+
 // misc
 datetime       g_lastM5Bar = 0;
+datetime       g_lastM15Bar = 0;
 datetime       g_newsCheckTime = 0;
 bool           g_newsBlocked = false;
 string         g_newsInfo = "";
@@ -158,12 +205,19 @@ int SessionShift(const datetime thai)
 
 bool InWindow(const int m, const int s, const int e) { return (s <= e) ? (m >= s && m < e) : (m >= s || m < e); }
 
-bool InKillzone(const datetime thai)
+bool InLondon(const datetime thai)
   {
    int sh = SessionShift(thai);
-   int m  = MinuteOfDay(thai);
-   return InWindow(m, mLonS + sh, mLonE + sh) || InWindow(m, mNYS + sh, mNYE + sh);
+   return InWindow(MinuteOfDay(thai), mLonS + sh, mLonE + sh);
   }
+
+bool InNY(const datetime thai)
+  {
+   int sh = SessionShift(thai);
+   return InWindow(MinuteOfDay(thai), mNYS + sh, mNYE + sh);
+  }
+
+bool InKillzone(const datetime thai) { return InLondon(thai) || InNY(thai); }
 
 bool WeekendBlocked(const datetime thai)
   {
@@ -204,10 +258,10 @@ bool IsFractalLow(const ENUM_TIMEFRAMES tf, const int s, const int n)
 
 // Latest confirmed swing high/low. legATR>0 => ขา swing ต้องยาว >= legATR*ATR
 double LastSwing(const ENUM_TIMEFRAMES tf, const bool high, const int atrHandle, const double legATR,
-                 const int lookback, int &shiftOut)
+                 const int lookback, int &shiftOut, const int startShift = -1)
   {
    int n = InpFractalBars;
-   for(int s = n + 1; s < lookback; s++)
+   for(int s = MathMax(n + 1, startShift); s < lookback; s++)
      {
       bool ok = high ? IsFractalHigh(tf, s, n) : IsFractalLow(tf, s, n);
       if(!ok) continue;
@@ -286,6 +340,7 @@ void DailyUpdate()
       g_asianReady = false;
       g_asianHigh = g_asianLow = 0;
       ArrayResize(g_sweptLevels, 0);
+      ArrayResize(g_boUsedLevels, 0);
       g_pdh = iHigh(_Symbol, PERIOD_D1, 1);
       g_pdl = iLow(_Symbol, PERIOD_D1, 1);
       Print("New trading day (TH) ", TimeToString(key, TIME_DATE), " start balance ", DoubleToString(g_dayStartBalance, 2));
@@ -325,8 +380,11 @@ void DailyUpdate()
    // Circuit breaker
    if(!g_dayLocked && g_dayStartBalance > 0)
      {
-      double ddPct = (AccountInfoDouble(ACCOUNT_EQUITY) - g_dayStartBalance) / g_dayStartBalance * 100.0;
-      if(g_consecLosses >= InpMaxConsecLosses || ddPct <= -InpMaxDailyLossPct)
+      double ddMoney = AccountInfoDouble(ACCOUNT_EQUITY) - g_dayStartBalance;
+      double ddPct = ddMoney / g_dayStartBalance * 100.0;
+      if(g_consecLosses >= InpMaxConsecLosses ||
+         (InpMaxDailyLossPct > 0 && ddPct <= -InpMaxDailyLossPct) ||
+         (InpMaxDailyLossMoney > 0 && ddMoney <= -InpMaxDailyLossMoney))
         {
          g_dayLocked = true;
          Print("Daily circuit breaker: consecLosses=", g_consecLosses, " DD%=", DoubleToString(ddPct, 2));
@@ -374,6 +432,7 @@ void ResetSetup(const string why)
    g_sweepLevel = g_extreme = g_internalSwing = 0;
    g_fvgUpper = g_fvgLower = 0;
    g_sweepName = "";
+   g_setupTag = "";
    g_orderTicket = 0;
    g_posId = 0;
    g_partialDone = false;
@@ -444,6 +503,7 @@ bool CheckSweepAt(const double lvl, const bool upper, const string name, const d
 
    g_sweepLevel = lvl;
    g_sweepName = name;
+   g_setupTag = "S1";
    g_sweepBarTime = iTime(_Symbol, PERIOD_M5, 0);
    MarkSwept(lvl);
    g_state = ST_SWEEP;
@@ -532,15 +592,27 @@ double CalcLot(const double slDist)
    if(tickVal <= 0) tickVal = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
    double tickSize = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
    if(tickVal <= 0 || tickSize <= 0 || slDist <= 0) return 0;
-   double riskMoney = AccountInfoDouble(ACCOUNT_BALANCE) * InpRiskPercent / 100.0;
+   double riskMoney = RiskMoney();
+   if(riskMoney <= 0) return 0;
    double lossPerLot = slDist / tickSize * tickVal;
    double lot = riskMoney / lossPerLot;
    double step = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
    double minL = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
    double maxL = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX);
-   lot = MathFloor(lot / step) * step;
-   if(lot < minL) return 0;               // ความเสี่ยงไม่พอสำหรับ lot ขั้นต่ำ -> ข้าม
+   lot = MathFloor(lot / step + 1e-9) * step;
+   if(lot < minL)
+     {
+      if(!InpAllowMinLot) return 0;         // ความเสี่ยงไม่พอสำหรับ lot ขั้นต่ำ -> ข้าม
+      lot = minL;
+      PrintFormat("Using min lot %.2f: actual risk %.2f > target %.2f", minL, minL * lossPerLot, riskMoney);
+     }
    return NormalizeDouble(MathMin(lot, maxL), 2);
+  }
+
+double RiskMoney()
+  {
+   if(InpRiskMode == RISK_MONEY) return InpRiskMoney;
+   return AccountInfoDouble(ACCOUNT_BALANCE) * InpRiskPercent / 100.0;
   }
 
 void PlaceOrder()
@@ -575,7 +647,7 @@ void PlaceOrder()
 
    double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK), bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
    bool ok;
-   string cmt = "XSC " + g_sweepName;
+   string cmt = "XSC S1 " + g_sweepName;
    if(g_dir > 0)
      {
       if(entry >= ask - stopsLvl) { ResetSetup("Price already inside entry (buy)"); return; }
@@ -596,6 +668,305 @@ void PlaceOrder()
    g_lastMsg = StringFormat("%s LIMIT %.2f lot @%.2f SL %.2f TP %.2f (%.0f pts)",
                             g_dir > 0 ? "BUY" : "SELL", lot, entry, sl, tp, distPts);
    Print(g_lastMsg);
+  }
+
+//+------------------------------------------------------------------+
+//| Market entry (ใช้ร่วมกันท่า 2 และ 3)                               |
+//+------------------------------------------------------------------+
+bool SlotFree() { return g_state == ST_IDLE || g_state == ST_SWEEP; }
+
+bool OpenMarket(const int dir, double sl, const string tag, const string name)
+  {
+   int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
+   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK), bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   double entry = (dir > 0) ? ask : bid;
+   if(dir < 0) sl += ask - bid;            // SL ของ Sell โดนที่ราคา Ask
+   sl = NormalizeDouble(sl, digits);
+   if((dir > 0 && sl >= entry) || (dir < 0 && sl <= entry)) return false;
+
+   double dist = MathAbs(entry - sl);
+   double distPts = dist / _Point;
+   if(distPts < InpMinSLPoints || distPts > InpMaxSLPoints)
+     {
+      g_lastMsg = StringFormat("%s %s skipped: SL %.0f pts out of range", tag, name, distPts);
+      Print(g_lastMsg);
+      return false;
+     }
+   double tp = NormalizeDouble(dir > 0 ? entry + InpTP_R * dist : entry - InpTP_R * dist, digits);
+   double lot = CalcLot(dist);
+   if(lot <= 0)
+     {
+      g_lastMsg = tag + " " + name + " skipped: lot below minimum for risk";
+      Print(g_lastMsg);
+      return false;
+     }
+
+   string cmt = "XSC " + tag + " " + name;
+   bool ok = (dir > 0) ? trade.Buy(lot, _Symbol, 0, sl, tp, cmt) : trade.Sell(lot, _Symbol, 0, sl, tp, cmt);
+   if(!ok || (trade.ResultRetcode() != TRADE_RETCODE_DONE && trade.ResultRetcode() != TRADE_RETCODE_PLACED))
+     {
+      g_lastMsg = tag + " order failed: " + IntegerToString(trade.ResultRetcode());
+      Print(g_lastMsg);
+      return false;
+     }
+
+   if(g_state == ST_SWEEP) Print("S1 sweep tracking superseded by ", tag);
+   ResetSetup("");
+   g_dir = dir;
+   g_setupTag = tag;
+   g_entry = (trade.ResultPrice() > 0) ? trade.ResultPrice() : entry;
+   g_sl = sl; g_tp = tp; g_riskDist = dist; g_lot = lot;
+   g_partialDone = false;
+   g_state = ST_TRADE;
+   g_lastMsg = StringFormat("%s %s MARKET %.2f lot @%.2f SL %.2f TP %.2f (%.0f pts)",
+                            tag, dir > 0 ? "BUY" : "SELL", lot, g_entry, sl, tp, distPts);
+   Print(g_lastMsg);
+   return true;
+  }
+
+//+------------------------------------------------------------------+
+//| Candle patterns: Engulfing / Pin Bar                             |
+//+------------------------------------------------------------------+
+bool IsBullReversal(const ENUM_TIMEFRAMES tf, const int s)
+  {
+   double o1 = iOpen(_Symbol, tf, s), c1 = iClose(_Symbol, tf, s), h1 = iHigh(_Symbol, tf, s), l1 = iLow(_Symbol, tf, s);
+   double o2 = iOpen(_Symbol, tf, s + 1), c2 = iClose(_Symbol, tf, s + 1);
+   double range = h1 - l1, body = MathAbs(c1 - o1);
+   if(range <= 0) return false;
+   bool engulf = (c2 < o2) && (c1 > o1) && (c1 >= o2) && (o1 <= c2);
+   double wick = MathMin(o1, c1) - l1;
+   bool pin = wick >= InpPB_PinWickRatio * MathMax(body, _Point) && wick >= 0.5 * range && c1 >= l1 + 0.5 * range;
+   return engulf || pin;
+  }
+
+bool IsBearReversal(const ENUM_TIMEFRAMES tf, const int s)
+  {
+   double o1 = iOpen(_Symbol, tf, s), c1 = iClose(_Symbol, tf, s), h1 = iHigh(_Symbol, tf, s), l1 = iLow(_Symbol, tf, s);
+   double o2 = iOpen(_Symbol, tf, s + 1), c2 = iClose(_Symbol, tf, s + 1);
+   double range = h1 - l1, body = MathAbs(c1 - o1);
+   if(range <= 0) return false;
+   bool engulf = (c2 > o2) && (c1 < o1) && (c1 <= o2) && (o1 >= c2);
+   double wick = h1 - MathMax(o1, c1);
+   bool pin = wick >= InpPB_PinWickRatio * MathMax(body, _Point) && wick >= 0.5 * range && c1 <= h1 - 0.5 * range;
+   return engulf || pin;
+  }
+
+//+------------------------------------------------------------------+
+//| ท่า 2: Trend Pullback + OB / Demand-Supply                        |
+//+------------------------------------------------------------------+
+// โครงสร้าง HH/HL = +1, LH/LL = -1 และคืนค่าขาราคาล่าสุด (impulse leg)
+int StructureTrend(const ENUM_TIMEFRAMES tf, const int atrH, double &legLow, double &legHigh, int &sLow, int &sHigh)
+  {
+   int lb = 300, h1s, h2s, l1s, l2s;
+   double h1 = LastSwing(tf, true, atrH, InpSwingLegATR, lb, h1s);
+   double l1 = LastSwing(tf, false, atrH, InpSwingLegATR, lb, l1s);
+   if(h1s < 0 || l1s < 0) return 0;
+   double h2 = LastSwing(tf, true, atrH, InpSwingLegATR, lb, h2s, h1s + 1);
+   double l2 = LastSwing(tf, false, atrH, InpSwingLegATR, lb, l2s, l1s + 1);
+   if(h2s < 0 || l2s < 0) return 0;
+
+   int trend = 0;
+   if(h1 > h2 && l1 > l2) trend = 1;
+   else if(h1 < h2 && l1 < l2) trend = -1;
+   if(trend == 0) return 0;
+
+   int s;
+   if(trend > 0)
+     {
+      legLow = LastSwing(tf, false, atrH, InpSwingLegATR, lb, s, h1s + 1); // swing low ก่อน HH ล่าสุด
+      if(s < 0) return 0;
+      legHigh = h1; sLow = s; sHigh = h1s;
+     }
+   else
+     {
+      legHigh = LastSwing(tf, true, atrH, InpSwingLegATR, lb, s, l1s + 1); // swing high ก่อน LL ล่าสุด
+      if(s < 0) return 0;
+      legLow = l1; sHigh = s; sLow = l1s;
+     }
+   return trend;
+  }
+
+// หา Order Block H1 ภายในขาราคา ที่ซ้อนทับโซน Fibo
+bool FindOB(const int dir, const int sNew, const int sOld, const double zLo, const double zHi, double &obLo, double &obHi)
+  {
+   for(int i = sNew + 1; i <= sOld; i++)
+     {
+      double o = iOpen(_Symbol, PERIOD_H1, i), c = iClose(_Symbol, PERIOD_H1, i);
+      double h = iHigh(_Symbol, PERIOD_H1, i), l = iLow(_Symbol, PERIOD_H1, i);
+      double cNext = iClose(_Symbol, PERIOD_H1, i - 1);
+      bool ob = (dir > 0) ? (c < o && cNext > h)    // แท่งแดงสุดท้ายก่อนแรงซื้อ displacement
+                          : (c > o && cNext < l);   // แท่งเขียวสุดท้ายก่อนแรงขาย
+      if(!ob) continue;
+      if(h >= zLo && l <= zHi) { obLo = l; obHi = h; return true; }
+     }
+   return false;
+  }
+
+bool CheckPullback(const bool canEnter)
+  {
+   double lo = 0, hi = 0; int sL = -1, sH = -1;
+   int tr = StructureTrend(PERIOD_H1, hATR_H1, lo, hi, sL, sH);
+   g_trendH1 = tr;
+   if(tr == 0) { g_pbInfo = "H1 no clear HH/HL or LH/LL"; return false; }
+   if(InpPB_RequireH4)
+     {
+      double a, b; int c, d;
+      if(StructureTrend(PERIOD_H4, hATR_H4, a, b, c, d) != tr) { g_pbInfo = "H4 not aligned with H1"; return false; }
+     }
+   double range = hi - lo;
+   if(range <= 0) return false;
+
+   int sNew = (tr > 0) ? sH : sL;          // ปลายขาล่าสุด
+   int sOld = (tr > 0) ? sL : sH;
+   datetime legTime = iTime(_Symbol, PERIOD_H1, sNew);
+   double hiSince = iHigh(_Symbol, PERIOD_H1, iHighest(_Symbol, PERIOD_H1, MODE_HIGH, sNew, 0));
+   double loSince = iLow(_Symbol, PERIOD_H1, iLowest(_Symbol, PERIOD_H1, MODE_LOW, sNew, 0));
+
+   double zTop, zBot;
+   if(tr > 0)
+     {
+      if(hiSince > hi) { g_pbInfo = "Up: new leg forming (wait swing)"; return false; }
+      if(loSince < lo) { g_pbInfo = "Up: structure broken (below HL)"; return false; }
+      zTop = hi - InpPB_FiboMin * range;
+      zBot = hi - InpPB_FiboMax * range;
+     }
+   else
+     {
+      if(loSince < lo) { g_pbInfo = "Down: new leg forming (wait swing)"; return false; }
+      if(hiSince > hi) { g_pbInfo = "Down: structure broken (above LH)"; return false; }
+      zBot = lo + InpPB_FiboMin * range;
+      zTop = lo + InpPB_FiboMax * range;
+     }
+
+   double obLo = 0, obHi = 0;
+   bool hasOB = FindOB(tr, sNew, sOld, zBot, zTop, obLo, obHi);
+   if(InpPB_RequireOB && !hasOB)
+     { g_pbInfo = StringFormat("%s zone %.2f-%.2f, no OB overlap", tr > 0 ? "Up" : "Down", zBot, zTop); return false; }
+
+   g_pbInfo = StringFormat("%s zone %.2f-%.2f%s%s", tr > 0 ? "Up" : "Down", zBot, zTop,
+                           hasOB ? StringFormat(" OB %.2f-%.2f", obLo, obHi) : "",
+                           legTime == g_pbUsedLeg ? " (leg used)" : "");
+   if(legTime == g_pbUsedLeg || !canEnter) return false;
+
+   // Confirmation: แท่ง M15 ที่ปิดแล้ว แตะโซนและเป็น Engulfing / Pin Bar
+   double l1 = iLow(_Symbol, PERIOD_M15, 1), h1 = iHigh(_Symbol, PERIOD_M15, 1), c1 = iClose(_Symbol, PERIOD_M15, 1);
+   double atr5 = ATR(hATR_M5, 1);
+   if(tr > 0)
+     {
+      if(!(l1 <= zTop && c1 > zBot && l1 > lo)) return false;
+      if(!IsBullReversal(PERIOD_M15, 1)) return false;
+      double sl = MathMin(l1, zBot) - InpSLBufferATR * atr5;
+      if(OpenMarket(1, sl, "S2", "Pullback")) { g_pbUsedLeg = legTime; return true; }
+     }
+   else
+     {
+      if(!(h1 >= zBot && c1 < zTop && h1 < hi)) return false;
+      if(!IsBearReversal(PERIOD_M15, 1)) return false;
+      double sl = MathMax(h1, zTop) + InpSLBufferATR * atr5;
+      if(OpenMarket(-1, sl, "S2", "Pullback")) { g_pbUsedLeg = legTime; return true; }
+     }
+   return false;
+  }
+
+//+------------------------------------------------------------------+
+//| ท่า 3: Breakout & Retest                                          |
+//+------------------------------------------------------------------+
+bool BOUsed(const double lvl)
+  {
+   for(int i = 0; i < ArraySize(g_boUsedLevels); i++)
+      if(MathAbs(g_boUsedLevels[i] - lvl) < _Point) return true;
+   return false;
+  }
+
+void MarkBOUsed(const double lvl)
+  {
+   int n = ArraySize(g_boUsedLevels);
+   ArrayResize(g_boUsedLevels, n + 1);
+   g_boUsedLevels[n] = lvl;
+  }
+
+bool TryBreakout(const double lvl, const string name, const double atr15)
+  {
+   if(lvl <= 0 || BOUsed(lvl)) return false;
+   double o1 = iOpen(_Symbol, PERIOD_M15, 1), c1 = iClose(_Symbol, PERIOD_M15, 1);
+   if(MathAbs(c1 - o1) < InpBO_MomentumATR * atr15) return false;   // ต้องเป็น Momentum candle
+
+   int dir = 0;
+   if(o1 <= lvl && c1 > lvl) dir = 1;
+   else if(o1 >= lvl && c1 < lvl) dir = -1;
+   else return false;
+
+   // ต้องสะสมพลังใต้/เหนือแนวมาก่อน
+   for(int i = 2; i <= InpBO_ConsolBars + 1; i++)
+     {
+      double c = iClose(_Symbol, PERIOD_M15, i);
+      if((dir > 0 && c > lvl) || (dir < 0 && c < lvl)) return false;
+     }
+
+   MarkBOUsed(lvl);
+   g_boActive = true;
+   g_boDir = dir;
+   g_boLevel = lvl;
+   g_boName = name;
+   g_boBarTime = iTime(_Symbol, PERIOD_M15, 1);
+   g_lastMsg = StringFormat("S3 Breakout %s %s @%.2f, wait retest", name, dir > 0 ? "UP" : "DOWN", lvl);
+   Print(g_lastMsg);
+   return true;
+  }
+
+void DetectBreakout()
+  {
+   if(g_boActive) return;
+   double atr15 = ATR(hATR_M15, 1);
+   if(atr15 <= 0) return;
+   if(g_asianReady)
+     {
+      if(TryBreakout(g_asianHigh, "AsianHigh", atr15)) return;
+      if(TryBreakout(g_asianLow, "AsianLow", atr15)) return;
+     }
+   if(TryBreakout(g_pdh, "PDH", atr15)) return;
+   if(TryBreakout(g_pdl, "PDL", atr15)) return;
+   int s;
+   double sh = LastSwing(PERIOD_H1, true, hATR_H1, InpSwingLegATR, 200, s);
+   if(TryBreakout(sh, "H1SwingHigh", atr15)) return;
+   double sl = LastSwing(PERIOD_H1, false, hATR_H1, InpSwingLegATR, 200, s);
+   TryBreakout(sl, "H1SwingLow", atr15);
+  }
+
+bool UpdateBreakout(const bool canEnter)
+  {
+   if(!g_boActive) return false;
+   double atr15 = ATR(hATR_M15, 1);
+   if(atr15 <= 0) return false;
+
+   int barsAfter = iBarShift(_Symbol, PERIOD_M15, g_boBarTime) - 1;   // แท่ง M15 ที่ปิดหลังแท่งเบรก
+   if(barsAfter > InpBO_RetestMaxBars)
+     { g_boActive = false; g_lastMsg = "S3 no retest in time: " + g_boName; return false; }
+   if(barsAfter >= 1)
+     {
+      double c15 = iClose(_Symbol, PERIOD_M15, 1);
+      if((g_boDir > 0 && c15 < g_boLevel - InpBO_FailATR * atr15) ||
+         (g_boDir < 0 && c15 > g_boLevel + InpBO_FailATR * atr15))
+        { g_boActive = false; g_lastMsg = "S3 failed breakout: " + g_boName; Print(g_lastMsg); return false; }
+     }
+
+   // Retest + Rejection บนแท่ง M5 ที่ปิดหลังแท่งเบรก
+   if(iTime(_Symbol, PERIOD_M5, 1) < g_boBarTime + PeriodSeconds(PERIOD_M15)) return false;
+   double l1 = iLow(_Symbol, PERIOD_M5, 1), h1 = iHigh(_Symbol, PERIOD_M5, 1), c1 = iClose(_Symbol, PERIOD_M5, 1);
+   double tol = InpBO_RetestTolATR * atr15;
+   bool touched = (g_boDir > 0) ? (l1 <= g_boLevel + tol && c1 > g_boLevel)
+                                : (h1 >= g_boLevel - tol && c1 < g_boLevel);
+   if(!touched) return false;
+   bool rejected = (g_boDir > 0) ? IsBullReversal(PERIOD_M5, 1) : IsBearReversal(PERIOD_M5, 1);
+   if(!rejected) return false;
+
+   g_boActive = false;
+   if(!canEnter)
+     { g_lastMsg = "S3 retest found but entry blocked (filter/slot): " + g_boName; return false; }
+   double atr5 = ATR(hATR_M5, 1);
+   double sl = (g_boDir > 0) ? MathMin(l1, g_boLevel) - InpSLBufferATR * atr5
+                             : MathMax(h1, g_boLevel) + InpSLBufferATR * atr5;
+   return OpenMarket(g_boDir, sl, "S3", g_boName + " Retest");
   }
 
 //+------------------------------------------------------------------+
@@ -669,6 +1040,7 @@ void ManageTrade()
   {
    ulong pt;
    if(!FindOurPosition(pt)) { FinalizeTrade(); return; }
+   if(g_posId == 0) g_posId = (ulong)PositionGetInteger(POSITION_IDENTIFIER);
 
    long   type  = PositionGetInteger(POSITION_TYPE);
    double open  = PositionGetDouble(POSITION_PRICE_OPEN);
@@ -794,6 +1166,11 @@ void UpdatePanel(const string filterMsg)
    s += StringFormat("PDH/PDL: %.2f / %.2f\n", g_pdh, g_pdl);
    s += StringFormat("Consec losses: %d/%d  Daily losses: %d  Locked: %s\n",
                      g_consecLosses, InpMaxConsecLosses, g_dailyLossCount, g_dayLocked ? "YES" : "no");
+   s += (InpRiskMode == RISK_MONEY) ? StringFormat("Risk/trade: %.2f %s (fixed)\n", RiskMoney(), AccountInfoString(ACCOUNT_CURRENCY))
+                                    : StringFormat("Risk/trade: %.2f%% = %.2f %s\n", InpRiskPercent, RiskMoney(), AccountInfoString(ACCOUNT_CURRENCY));
+   s += "Setup: " + (g_setupTag == "" ? "-" : g_setupTag) + "\n";
+   if(InpUseSetup2) s += "S2 Pullback: " + g_pbInfo + "\n";
+   if(InpUseSetup3) s += "S3 Breakout: " + (g_boActive ? StringFormat("%s %s @%.2f waiting retest", g_boName, g_boDir > 0 ? "UP" : "DOWN", g_boLevel) : "-") + "\n";
    s += "Last: " + g_lastMsg;
    Comment(s);
   }
@@ -813,7 +1190,8 @@ int OnInit()
    hATR_M5  = iATR(_Symbol, PERIOD_M5, InpATRPeriod);
    hATR_M15 = iATR(_Symbol, PERIOD_M15, InpATRPeriod);
    hATR_H1  = iATR(_Symbol, PERIOD_H1, InpATRPeriod);
-   if(hATR_M5 == INVALID_HANDLE || hATR_M15 == INVALID_HANDLE || hATR_H1 == INVALID_HANDLE)
+   hATR_H4  = iATR(_Symbol, PERIOD_H4, InpATRPeriod);
+   if(hATR_M5 == INVALID_HANDLE || hATR_M15 == INVALID_HANDLE || hATR_H1 == INVALID_HANDLE || hATR_H4 == INVALID_HANDLE)
      { Print("ATR handle error"); return INIT_FAILED; }
 
    trade.SetExpertMagicNumber(InpMagic);
@@ -830,6 +1208,7 @@ void OnDeinit(const int reason)
    IndicatorRelease(hATR_M5);
    IndicatorRelease(hATR_M15);
    IndicatorRelease(hATR_H1);
+   IndicatorRelease(hATR_H4);
    ObjectsDeleteAll(0, "XSC_");
    Comment("");
   }
@@ -850,16 +1229,36 @@ void OnTick()
    if(m5 != g_lastM5Bar)
      {
       g_lastM5Bar = m5;
-      if(g_state == ST_IDLE && filtersOk)
-         DetectSweep();
-      else if(g_state == ST_SWEEP)
+      datetime m15 = iTime(_Symbol, PERIOD_M15, 0);
+      bool newM15 = (m15 != g_lastM15Bar);
+      if(newM15) g_lastM15Bar = m15;
+
+      // ท่า 1: Liquidity Sweep + CHoCH
+      if(InpUseSetup1)
         {
-         CheckChoch();
-         if(g_state == ST_CHOCH)
+         if(g_state == ST_SWEEP)
            {
-            if(filtersOk) PlaceOrder();
-            else ResetSetup("CHoCH but filter blocked: " + why);
+            CheckChoch();
+            if(g_state == ST_CHOCH)
+              {
+               if(filtersOk) PlaceOrder();
+               else ResetSetup("CHoCH but filter blocked: " + why);
+              }
            }
+         else if(g_state == ST_IDLE && filtersOk)
+            DetectSweep();
+        }
+
+      // ท่า 2: Trend Pullback + OB (ตรวจทุกแท่ง M15 ที่ปิด)
+      if(InpUseSetup2 && newM15)
+         CheckPullback(filtersOk && SlotFree());
+
+      // ท่า 3: Breakout & Retest
+      if(InpUseSetup3)
+        {
+         if(newM15) DetectBreakout();
+         bool nyOk = !InpBO_NYOnly || InNY(ToThai(TimeCurrent()));
+         UpdateBreakout(filtersOk && SlotFree() && nyOk);
         }
      }
    UpdatePanel(why);

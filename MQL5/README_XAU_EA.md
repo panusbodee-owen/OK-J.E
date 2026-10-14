@@ -1,13 +1,29 @@
 # XAU_SweepCHoCH_EA (MQL5)
 
-EA สำหรับ XAUUSD ตามพิมพ์เขียว "ท่าเดิม ต้นทุนต่ำ" — ท่า **Liquidity Sweep + CHoCH + FVG**
+EA สำหรับ XAUUSD ตามพิมพ์เขียว "ท่าเดิม ต้นทุนต่ำ" — รวม 3 ท่า เปิด/ปิดแยกได้ (`InpUseSetup1/2/3`)
+
+| ท่า | เงื่อนไข | เข้าออเดอร์ |
+|---|---|---|
+| S1 Liquidity Sweep + CHoCH | ตาม State Machine ด้านล่าง | Limit ใน FVG |
+| S2 Trend Pullback + OB | H1 เป็น HH/HL (หรือ LH/LL), ราคาย่อเข้าโซน Fibo 61.8–78.6% ของขาล่าสุด ที่ซ้อนทับ Order Block H1, แท่ง M15 ปิดเป็น Engulfing/Pin Bar (เลือกให้ H4 ต้องไปทางเดียวกันได้) | Market, SL หลังโซน, 1 ไม้ต่อ 1 ขาราคา |
+| S3 Breakout & Retest | แท่ง M15 Momentum (เนื้อ ≥ 1×ATR) เบรก Asian H/L, PDH/PDL หรือ Swing H1 หลังสะสมพลัง 16 แท่ง; ไม่ไล่ราคา รอ Retest แนว + แท่ง M5 ปฏิเสธราคาภายใน 16 แท่ง M15; ยกเลิกถ้าปิดกลับเข้ากรอบ (เบรกหลอก) | Market, SL หลังแนวที่เบรก, ค่าเริ่มต้นเข้าเฉพาะ NY Killzone |
+
+ทุกท่าใช้ตัวกรอง, ช่วง SL 180–600 จุด, TP 3R, Partial/BE/Trailing และ Circuit breaker ชุดเดียวกัน — เปิดได้ครั้งละ 1 ไม้
+
+## ความเสี่ยงต่อไม้
+- `InpRiskMode = % ของ Balance` → ใช้ `InpRiskPercent`
+- `InpRiskMode = ยอดเงินคงที่ต่อไม้` → ใช้ `InpRiskMoney` (เช่น 5 = เสี่ยง 5$ ต่อไม้ทุกไม้ ไม่ว่าพอร์ตเท่าไร)
+- ถ้า Lot ที่คำนวณได้ต่ำกว่า Lot ขั้นต่ำ EA จะข้ามไม้นั้น เว้นแต่เปิด `InpAllowMinLot` (ความเสี่ยงจริงจะเกินที่ตั้ง และพิมพ์แจ้งใน Log)
+- ตัวอย่าง XAUUSD: 0.01 lot, SL 500 จุด ≈ 5$ → ตั้ง 5$ จะได้ SL ได้ไม่เกิน ~500 จุดที่ 0.01 lot
+- เปลี่ยนค่าได้ตลอดผ่านหน้าต่าง Inputs (F7 บนกราฟ) มีผลกับไม้ถัดไป
+- Circuit breaker รายวันตั้งเป็นเงินได้ด้วย `InpMaxDailyLossMoney` (0 = ปิด)
 
 ## การติดตั้ง
 1. คัดลอก `Experts/XAU_SweepCHoCH_EA.mq5` ไปที่ `MQL5/Experts/` ของ MT5
 2. Compile ใน MetaEditor (F7) แล้วลากใส่กราฟ XAUUSD (TF ใดก็ได้ EA ใช้ M5/M15/H1/D1 เอง)
 3. เปิด Algo Trading
 
-## State Machine 6 สถานะ
+## State Machine 6 สถานะ (ท่า S1)
 | State | การทำงาน |
 |---|---|
 | 1 IDLE & FILTER | Killzone (14:00–17:00, 19:00–22:30 ไทย), Spread ≤ 40, ข่าวแดง USD ±30 นาที, Circuit breaker, ศุกร์หลัง 22:00/จันทร์ก่อน 14:00 |
@@ -28,5 +44,4 @@ Circuit breaker: แพ้ติดกัน 2 ไม้ หรือ Equity ล
 
 ## ข้อจำกัด / ที่ยังไม่ทำ
 - ยืนยัน CHoCH ด้วย FVG เท่านั้น (ยังไม่ใช้ Order Block)
-- โหมด Trend Pullback (Fibo 61.8–78.6% + Engulfing/Pin bar) และ Breakout & Retest ยังไม่ได้ทำ — ใช้ได้แค่ตัวกรอง Premium/Discount (`InpUseEquilibrium`)
 - ยังไม่ได้ Compile/Backtest จริงใน MT5 — ควรทดสอบบนบัญชี Demo ก่อน
